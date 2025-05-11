@@ -6,6 +6,10 @@
 #define TAMANHO_NAVIO 3       // Tamanho fixo dos navios (3 posicoes)
 #define AGUA 0                // Valor para representar agua no tabuleiro
 #define NAVIO 3               // Valor para representar navios no tabuleiro
+#define HABILIDADE 5          // Valor para representar área afetada por habilidade
+
+// Constantes para as matrizes de habilidades
+#define TAMANHO_HABILIDADE 5  // Tamanho das matrizes de habilidade (5x5)
 
 // Enumeracao para os tipos de orientacao dos navios
 typedef enum {
@@ -14,6 +18,13 @@ typedef enum {
     DIAGONAL_DESCENDENTE = 2,  // Diagonal principal (i,i)
     DIAGONAL_ASCENDENTE = 3    // Diagonal invertida (i,9-i)
 } Orientacao;
+
+// Enumeracao para os tipos de habilidades
+typedef enum {
+    CONE = 0,
+    CRUZ = 1,
+    OCTAEDRO = 2
+} TipoHabilidade;
 
 // Funcao para inicializar o tabuleiro com agua
 void inicializarTabuleiro(int tabuleiro[TAMANHO_TABULEIRO][TAMANHO_TABULEIRO]) {
@@ -174,6 +185,155 @@ const char* obterTextoOrientacao(Orientacao orientacao) {
     }
 }
 
+// Funcao para converter o tipo de habilidade em texto para exibicao
+const char* obterTextoHabilidade(TipoHabilidade tipoHabilidade) {
+    switch (tipoHabilidade) {
+        case CONE:
+            return "Cone";
+        case CRUZ:
+            return "Cruz";
+        case OCTAEDRO:
+            return "Octaedro";
+        default:
+            return "Desconhecida";
+    }
+}
+
+// Função para criar a matriz de habilidade do tipo Cone
+void criarMatrizCone(int matrizHabilidade[TAMANHO_HABILIDADE][TAMANHO_HABILIDADE]) {
+    // Inicializa matriz com zeros
+    for (int i = 0; i < TAMANHO_HABILIDADE; i++) {
+        for (int j = 0; j < TAMANHO_HABILIDADE; j++) {
+            matrizHabilidade[i][j] = 0;
+        }
+    }
+    
+    // Define o formato de cone (apontando para baixo, expandindo)
+    // O ponto de origem está no topo e a área se expande para baixo
+    for (int i = 0; i < TAMANHO_HABILIDADE; i++) {
+        // A largura do cone aumenta em cada linha
+        int larguraCone = 2 * i + 1;
+        int inicioColuna = (TAMANHO_HABILIDADE - larguraCone) / 2;
+        
+        // Preenche a linha atual do cone
+        for (int j = 0; j < larguraCone && j + inicioColuna < TAMANHO_HABILIDADE; j++) {
+            matrizHabilidade[i][inicioColuna + j] = 1;
+        }
+    }
+}
+
+// Função para criar a matriz de habilidade do tipo Cruz
+void criarMatrizCruz(int matrizHabilidade[TAMANHO_HABILIDADE][TAMANHO_HABILIDADE]) {
+    // Inicializa matriz com zeros
+    for (int i = 0; i < TAMANHO_HABILIDADE; i++) {
+        for (int j = 0; j < TAMANHO_HABILIDADE; j++) {
+            matrizHabilidade[i][j] = 0;
+        }
+    }
+    
+    // Define o meio da matriz
+    int meio = TAMANHO_HABILIDADE / 2;
+    
+    // Preenche a linha horizontal da cruz
+    for (int j = 0; j < TAMANHO_HABILIDADE; j++) {
+        matrizHabilidade[meio][j] = 1;
+    }
+    
+    // Preenche a linha vertical da cruz
+    for (int i = 0; i < TAMANHO_HABILIDADE; i++) {
+        matrizHabilidade[i][meio] = 1;
+    }
+}
+
+// Função para criar a matriz de habilidade do tipo Octaedro (losango)
+void criarMatrizOctaedro(int matrizHabilidade[TAMANHO_HABILIDADE][TAMANHO_HABILIDADE]) {
+    // Inicializa matriz com zeros
+    for (int i = 0; i < TAMANHO_HABILIDADE; i++) {
+        for (int j = 0; j < TAMANHO_HABILIDADE; j++) {
+            matrizHabilidade[i][j] = 0;
+        }
+    }
+    
+    // Define o meio da matriz
+    int meio = TAMANHO_HABILIDADE / 2;
+    
+    // Preenche o formato de losango
+    for (int i = 0; i < TAMANHO_HABILIDADE; i++) {
+        // Calcula a distância da linha atual ao centro
+        int distancia = (i > meio) ? i - meio : meio - i;
+        
+        // Define quantas células serão preenchidas nesta linha
+        int larguraLosango = TAMANHO_HABILIDADE - 2 * distancia;
+        
+        // Se a largura for positiva, preenche as células
+        if (larguraLosango > 0) {
+            int inicioColuna = distancia;
+            for (int j = 0; j < larguraLosango; j++) {
+                matrizHabilidade[i][inicioColuna + j] = 1;
+            }
+        }
+    }
+}
+
+// Função para exibir uma matriz de habilidade (para depuração)
+void exibirMatrizHabilidade(int matrizHabilidade[TAMANHO_HABILIDADE][TAMANHO_HABILIDADE]) {
+    printf("\nMatriz de Habilidade:\n");
+    for (int i = 0; i < TAMANHO_HABILIDADE; i++) {
+        for (int j = 0; j < TAMANHO_HABILIDADE; j++) {
+            printf("%d ", matrizHabilidade[i][j]);
+        }
+        printf("\n");
+    }
+}
+
+// Função para aplicar uma habilidade ao tabuleiro
+void aplicarHabilidade(int tabuleiro[TAMANHO_TABULEIRO][TAMANHO_TABULEIRO], 
+                      int matrizHabilidade[TAMANHO_HABILIDADE][TAMANHO_HABILIDADE],
+                      int linhaOrigem, int colunaOrigem) {
+    
+    // Determina o ponto de origem (centro) na matriz de habilidade
+    int centroHabilidade = TAMANHO_HABILIDADE / 2;
+    
+    // Cria um tabuleiro temporário para armazenar os resultados
+    int tabuleiroTemp[TAMANHO_TABULEIRO][TAMANHO_TABULEIRO];
+    
+    // Copia o tabuleiro original para o temporário
+    for (int i = 0; i < TAMANHO_TABULEIRO; i++) {
+        for (int j = 0; j < TAMANHO_TABULEIRO; j++) {
+            tabuleiroTemp[i][j] = tabuleiro[i][j];
+        }
+    }
+    
+    // Aplica a habilidade ao tabuleiro
+    for (int i = 0; i < TAMANHO_HABILIDADE; i++) {
+        for (int j = 0; j < TAMANHO_HABILIDADE; j++) {
+            // Calcula a posição correspondente no tabuleiro
+            int linhaTabuleiro = linhaOrigem + (i - centroHabilidade);
+            int colunaTabuleiro = colunaOrigem + (j - centroHabilidade);
+            
+            // Verifica se a posição está dentro dos limites do tabuleiro
+            if (linhaTabuleiro >= 0 && linhaTabuleiro < TAMANHO_TABULEIRO &&
+                colunaTabuleiro >= 0 && colunaTabuleiro < TAMANHO_TABULEIRO) {
+                
+                // Se a célula da matriz de habilidade for 1, marca a posição no tabuleiro
+                if (matrizHabilidade[i][j] == 1) {
+                    // Apenas marca se a posição for água ou navio, mantendo o navio visível
+                    if (tabuleiroTemp[linhaTabuleiro][colunaTabuleiro] == AGUA) {
+                        tabuleiroTemp[linhaTabuleiro][colunaTabuleiro] = HABILIDADE;
+                    }
+                }
+            }
+        }
+    }
+    
+    // Copia o tabuleiro temporário de volta para o original
+    for (int i = 0; i < TAMANHO_TABULEIRO; i++) {
+        for (int j = 0; j < TAMANHO_TABULEIRO; j++) {
+            tabuleiro[i][j] = tabuleiroTemp[i][j];
+        }
+    }
+}
+
 int main() {
     // Declara e inicializa o tabuleiro
     int tabuleiro[TAMANHO_TABULEIRO][TAMANHO_TABULEIRO];
@@ -205,10 +365,81 @@ int main() {
         }
     }
     
-    // Exibe o tabuleiro com os navios posicionados
-    printf("\nTabuleiro de Batalha Naval:\n");
+    // Exibe o tabuleiro inicial com os navios posicionados
+    printf("\nTabuleiro de Batalha Naval (Inicial):\n");
     printf("0 = Agua, 3 = Navio\n");
     exibirTabuleiro(tabuleiro);
+    
+    // Cria as matrizes para as habilidades
+    int matrizCone[TAMANHO_HABILIDADE][TAMANHO_HABILIDADE];
+    int matrizCruz[TAMANHO_HABILIDADE][TAMANHO_HABILIDADE];
+    int matrizOctaedro[TAMANHO_HABILIDADE][TAMANHO_HABILIDADE];
+    
+    // Inicializa as matrizes de habilidade
+    criarMatrizCone(matrizCone);
+    criarMatrizCruz(matrizCruz);
+    criarMatrizOctaedro(matrizOctaedro);
+    
+    // Exibe as matrizes de habilidade para verificação
+    printf("\n--- Matrizes de Habilidade ---\n");
+    
+    printf("\nHabilidade: Cone");
+    exibirMatrizHabilidade(matrizCone);
+    
+    printf("\nHabilidade: Cruz");
+    exibirMatrizHabilidade(matrizCruz);
+    
+    printf("\nHabilidade: Octaedro");
+    exibirMatrizHabilidade(matrizOctaedro);
+    
+    // Define as coordenadas de origem para cada habilidade
+    struct {
+        int linha;
+        int coluna;
+        TipoHabilidade tipo;
+    } habilidades[3] = {
+        {2, 7, CONE},      // Habilidade Cone
+        {5, 5, CRUZ},      // Habilidade Cruz
+        {8, 8, OCTAEDRO}   // Habilidade Octaedro
+    };
+    
+    // Cria tabuleiros separados para cada habilidade
+    int tabuleiroCone[TAMANHO_TABULEIRO][TAMANHO_TABULEIRO];
+    int tabuleiroCruz[TAMANHO_TABULEIRO][TAMANHO_TABULEIRO];
+    int tabuleiroOctaedro[TAMANHO_TABULEIRO][TAMANHO_TABULEIRO];
+    
+    // Copia o tabuleiro original para cada tabuleiro de habilidade
+    for (int i = 0; i < TAMANHO_TABULEIRO; i++) {
+        for (int j = 0; j < TAMANHO_TABULEIRO; j++) {
+            tabuleiroCone[i][j] = tabuleiro[i][j];
+            tabuleiroCruz[i][j] = tabuleiro[i][j];
+            tabuleiroOctaedro[i][j] = tabuleiro[i][j];
+        }
+    }
+    
+    // Aplica cada habilidade em seu respectivo tabuleiro
+    printf("\n--- Aplicando Habilidades ---\n");
+    
+    // Aplica a habilidade Cone
+    aplicarHabilidade(tabuleiroCone, matrizCone, habilidades[0].linha, habilidades[0].coluna);
+    printf("\nTabuleiro com Habilidade Cone na posicao (%d,%d):\n", 
+           habilidades[0].linha, habilidades[0].coluna);
+    printf("0 = Agua, 3 = Navio, 5 = Area da Habilidade\n");
+    exibirTabuleiro(tabuleiroCone);
+    
+    // Aplica a habilidade Cruz
+    aplicarHabilidade(tabuleiroCruz, matrizCruz, habilidades[1].linha, habilidades[1].coluna);
+    printf("\nTabuleiro com Habilidade Cruz na posicao (%d,%d):\n", 
+           habilidades[1].linha, habilidades[1].coluna);
+    printf("0 = Agua, 3 = Navio, 5 = Area da Habilidade\n");
+    exibirTabuleiro(tabuleiroCruz);
+    
+    // Aplica a habilidade Octaedro
+    aplicarHabilidade(tabuleiroOctaedro, matrizOctaedro, habilidades[2].linha, habilidades[2].coluna);
+    printf("\nTabuleiro com Habilidade Octaedro na posicao (%d,%d):\n", 
+           habilidades[2].linha, habilidades[2].coluna);
+    printf("0 = Agua, 3 = Navio, 5 = Area da Habilidade\n");
+    exibirTabuleiro(tabuleiroOctaedro);
     
     return 0;
 }
